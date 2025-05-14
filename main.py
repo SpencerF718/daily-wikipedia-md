@@ -1,8 +1,6 @@
 import urllib.request
-
-def getHtml(link):
-    #TODO: implement
-    pass
+from html.parser import HTMLParser
+from datetime import datetime
 
 def getLink():
     randomLink = "https://en.wikipedia.org/wiki/Special:Random"
@@ -13,13 +11,58 @@ def getLink():
         
     return redirectedLink
 
-def formatMarkdown(headers, link):
+
+def getHTML(link):
+    
+    req = urllib.request.Request(link, headers={'User-Agent': 'Mozilla/5.0'})
+
+    with urllib.request.urlopen(req) as response:
+        htmlContent = response.read().decode('utf-8')
+
+    return htmlContent
+
+
+def getTitle(htmlContent):
+
+    startIndex = htmlContent.find('<title>') + len('<title>')
+    endIndex = htmlContent.find(' - Wikipedia</title>', startIndex)
+    title = htmlContent[startIndex:endIndex]
+
+    return title.strip()
+
+
+def parseHTML(htmlContent):
+
+    headers = []
+
+    class wikiHTMLParser(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag in ['h2', 'h3', 'h4']:
+                self.currentTag = tag
+
+        def handle_endtag(self, tag):
+            if tag in ['h2', 'h3', 'h4']:
+                self.currentTag = None
+
+        def handle_data(self, data):
+            if hasattr(self, 'currentTag'):
+                headers.append((self.currentTag, data))
+
+    parser = wikiHTMLParser()
+    parser.feed(htmlContent)
+
+    return headers
+
+
+def formatMarkdown(headers, link, title):
+
+    currentDateTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     initialFormat = (
-        "{{date}} {{time}}\n"
+        f"{currentDateTime}\n"
         "**Related Topics**:\n"
         f"**Link**: {link}\n"
-        "# {{title}} #wikipedia\n\n"
+        f"# {title} #wikipedia\n\n"
     )
 
     bodyFormat = ""
@@ -34,21 +77,27 @@ def formatMarkdown(headers, link):
 
     return initialFormat + bodyFormat
 
-def generateMarkdown(link, headers, saveToVault):
+
+def generateMarkdown(link, headers, title, saveToVault):
     
-    mdContent = formatMarkdown(headers, link)
+    mdContent = formatMarkdown(headers, link, title)
 
     fileName = "Wikipedia_note.md"
 
     with open(fileName, "w", encoding="utf-8") as file:
         file.write(mdContent)
 
+
 def main():
+
     link = getLink()
-    print("Random Wikipedia Article:", link)
+    htmlContent = getHTML(link)
+    title = getTitle(htmlContent)
+    headers = parseHTML(htmlContent)
+
     saveToVault = False
-    dummyHeaders = [("h2", "testh2"), ("h3", "testh3"), ("h2", "testh2n2")]
-    generateMarkdown(link, dummyHeaders, saveToVault)
+
+    generateMarkdown(link, headers, title, saveToVault)
 
 if __name__ == "__main__":
     main()
