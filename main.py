@@ -1,34 +1,26 @@
 import urllib.request
-from html.parser import HTMLParser
 
-def getHTML(link):
-    # TODO: implement
-    pass
-
-def parseHTML(content):
-    # TODO: implement
+def getHtml(link):
+    #TODO: implement
     pass
 
 def getLink():
+    randomLink = "https://en.wikipedia.org/wiki/Special:Random"
+    req = urllib.request.Request(randomLink, headers={'User-Agent': 'Mozilla/5.0'})
 
-    url = "https://en.wikipedia.org/wiki/Special:Random"
-
-    with urllib.request.urlopen(url) as response:
-        htmlContent = response.read().decode('utf-8')
-
-    link = parseHTML(htmlContent)
-    return link
+    with urllib.request.urlopen(req) as response:
+        redirectedLink = response.geturl()
+        
+    return redirectedLink
 
 def generateMarkdown(link, saveToVault=False):
-    # TODO: implement
+    # TODO: implement 
     pass
 
 def main():
-    wikiLink = "https://en.wikipedia.org/wiki/Special:Random"
-    getLink()
-    htmlContent = getHTML(wikiLink)
-    headers = parseHTML(htmlContent)
-    generateMarkdown(wikiLink)
+    link = getLink()
+    print("Random Wikipedia Article:", link)
+    generateMarkdown(link)
 
 if __name__ == "__main__":
     main()
