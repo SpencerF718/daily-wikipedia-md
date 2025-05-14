@@ -13,18 +13,42 @@ def getLink():
         
     return redirectedLink
 
-def formatMarkdown(title, headers, link):
-    # TODO: implement
-    pass
+def formatMarkdown(headers, link):
 
-def generateMarkdown(link, saveToVault=False):
-    # TODO: implement 
-    pass
+    initialFormat = (
+        "{{date}} {{time}}\n"
+        "**Related Topics**:\n"
+        f"**Link**: {link}\n"
+        "# {{title}} #wikipedia\n\n"
+    )
+
+    bodyFormat = ""
+
+    for tag, title in headers:
+        if tag == "h2":
+            bodyFormat += f"## {title}\n\n"
+        elif tag == "h3":
+            bodyFormat += f"### {title}\n\n"
+        elif tag == "h4":
+            bodyFormat += f"#### {title}\n\n"
+
+    return initialFormat + bodyFormat
+
+def generateMarkdown(link, headers, saveToVault):
+    
+    mdContent = formatMarkdown(headers, link)
+
+    fileName = "Wikipedia_note.md"
+
+    with open(fileName, "w", encoding="utf-8") as file:
+        file.write(mdContent)
 
 def main():
     link = getLink()
     print("Random Wikipedia Article:", link)
-    generateMarkdown(link)
+    saveToVault = False
+    dummyHeaders = [("h2", "testh2"), ("h3", "testh3"), ("h2", "testh2n2")]
+    generateMarkdown(link, dummyHeaders, saveToVault)
 
 if __name__ == "__main__":
     main()
