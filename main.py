@@ -13,6 +13,10 @@ def getLink():
         
     return redirectedLink
 
+def formatMarkdown(title, headers, link):
+    # TODO: implement
+    pass
+
 def generateMarkdown(link, saveToVault=False):
     # TODO: implement 
     pass
