@@ -1,8 +1,13 @@
 import urllib.request
 from html.parser import HTMLParser
 from datetime import datetime
+import os
 
 def getLink():
+    """
+    Uses Special:Random Wikipedia page and its subsequent redirect to get and store a random Wikipedia article link.
+    """
+
     randomLink = "https://en.wikipedia.org/wiki/Special:Random"
     req = urllib.request.Request(randomLink, headers={'User-Agent': 'Mozilla/5.0'})
 
@@ -13,6 +18,15 @@ def getLink():
 
 
 def getHTML(link):
+    """
+    Retrieves the raw HTML data. 
+
+    Parameters:
+        link (str): Link to the random Wikipedia article.
+
+    Returns:
+        str: The raw HTML data
+    """
     
     req = urllib.request.Request(link, headers={'User-Agent': 'Mozilla/5.0'})
 
@@ -23,6 +37,15 @@ def getHTML(link):
 
 
 def getTitle(htmlContent):
+    """
+    Retrieves the title of the Wikipedia article.
+
+    Parameters: 
+        htmlContent (str): The raw HTML data
+    
+    Returns:
+        str: The Random Wikipedia article title
+    """
 
     startIndex = htmlContent.find('<title>') + len('<title>')
     endIndex = htmlContent.find(' - Wikipedia</title>', startIndex)
@@ -32,6 +55,15 @@ def getTitle(htmlContent):
 
 
 def parseHTML(htmlContent):
+    """
+    Parses 3 levels of headers, excluding non-noteworthy sections.
+
+    Parameters:
+        htmlContent (str): The raw HTML data
+
+    Returns:
+        list: A list of tag and text pairs for each header.
+    """
 
     headers = []
 
@@ -69,6 +101,17 @@ def parseHTML(htmlContent):
 
 
 def formatMarkdown(headers, link, title):
+    """
+    Formats headers, title, and link into string to be inserted into the markdown.
+
+    Parameters:
+        headers (list): A list of tag and text pairs for each header
+        link (str): The link to the random Wikipedia article
+        title (str): The title of the Wikipedia article
+
+    Returns:
+        str: A string formatted for markdown files
+    """
 
     currentDateTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -92,26 +135,46 @@ def formatMarkdown(headers, link, title):
     return initialFormat + bodyFormat
 
 
-def generateMarkdown(link, headers, title, saveToVault):
+def generateMarkdown(link, headers, title, filePath, fileName):
+    """
+    Writes the markdown string into a file at a specified location.
+
+    Parameters:
+        link (str): The link to the random Wikipedia article
+        headers (list): List of headers from the Wikipedia article
+        title (str): Title of the article
+        filePath (str): The folder path where the .md file will be saved at
+        fileName (str): The name of the .md file that will be created
+    """
     
     mdContent = formatMarkdown(headers, link, title)
 
-    fileName = "Wikipedia_note.md"
+    filePath = os.path.join(filePath, fileName)
 
-    with open(fileName, "w", encoding="utf-8") as file:
+    with open(filePath, "w", encoding="utf-8") as file:
         file.write(mdContent)
 
 
 def main():
+    """
+    Main function. Calls previous functions and included file name and path for easy editability.
+    """
 
     link = getLink()
     htmlContent = getHTML(link)
     title = getTitle(htmlContent)
     headers = parseHTML(htmlContent)
 
-    saveToVault = False
+    datePrefix = datetime.now().strftime("%Y-%m-%d")
 
-    generateMarkdown(link, headers, title, saveToVault)
+    # Change the file path and name here:
+    # For the file path, "." will save it directly to this project
+    # To save it to your Vault or any other folder, do something like:
+    # (C:\Users\Name\OneDrive\Documents\Main\Daily\Wikipedia)
+    fileName = f"{datePrefix} Wikipedia Note.md"
+    filePath = r"."
+
+    generateMarkdown(link, headers, title, filePath, fileName)
 
 if __name__ == "__main__":
     main()
