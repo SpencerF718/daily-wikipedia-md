@@ -35,6 +35,18 @@ def parseHTML(htmlContent):
 
     headers = []
 
+    disallowedHeaders  = {
+        "references",
+        "external links",
+        "see also",
+        "further reading",
+        "footnotes",
+        "notes",
+        "citations",
+        "bibliography",
+        "sources"
+    }
+
     class wikiHTMLParser(HTMLParser):
         def handle_starttag(self, tag, attrs):
             if tag in ['h2', 'h3', 'h4']:
@@ -46,7 +58,9 @@ def parseHTML(htmlContent):
 
         def handle_data(self, data):
             if hasattr(self, 'currentTag'):
-                headers.append((self.currentTag, data))
+                fixedData = data.strip().lower()
+                if fixedData and fixedData not in disallowedHeaders:
+                    headers.append((self.currentTag, data.strip()))
 
     parser = wikiHTMLParser()
     parser.feed(htmlContent)
