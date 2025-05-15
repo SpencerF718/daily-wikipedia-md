@@ -3,17 +3,19 @@ from html.parser import HTMLParser
 from datetime import datetime
 import os
 
+
 def getLink():
     """
     Uses Special:Random Wikipedia page and its subsequent redirect to get and store a random Wikipedia article link.
     """
 
     randomLink = "https://en.wikipedia.org/wiki/Special:Random"
-    req = urllib.request.Request(randomLink, headers={'User-Agent': 'Mozilla/5.0'})
+    req = urllib.request.Request(
+        randomLink, headers={'User-Agent': 'Mozilla/5.0'})
 
     with urllib.request.urlopen(req) as response:
         redirectedLink = response.geturl()
-        
+
     return redirectedLink
 
 
@@ -27,7 +29,7 @@ def getHTML(link):
     Returns:
         str: The raw HTML data
     """
-    
+
     req = urllib.request.Request(link, headers={'User-Agent': 'Mozilla/5.0'})
 
     with urllib.request.urlopen(req) as response:
@@ -42,7 +44,7 @@ def getTitle(htmlContent):
 
     Parameters: 
         htmlContent (str): The raw HTML data
-    
+
     Returns:
         str: The Random Wikipedia article title
     """
@@ -67,7 +69,7 @@ def parseHTML(htmlContent):
 
     headers = []
 
-    disallowedHeaders  = {
+    disallowedHeaders = {
         "references",
         "external links",
         "see also",
@@ -146,7 +148,7 @@ def generateMarkdown(link, headers, title, filePath, fileName):
         filePath (str): The folder path where the .md file will be saved at
         fileName (str): The name of the .md file that will be created
     """
-    
+
     mdContent = formatMarkdown(headers, link, title)
 
     filePath = os.path.join(filePath, fileName)
@@ -175,6 +177,7 @@ def main():
     filePath = r"."
 
     generateMarkdown(link, headers, title, filePath, fileName)
+
 
 if __name__ == "__main__":
     main()
