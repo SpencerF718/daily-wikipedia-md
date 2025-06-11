@@ -3,6 +3,10 @@ from html.parser import HTMLParser
 from datetime import datetime
 import os
 
+# Fiddle with these values if you are unable to find an article.
+MIN_HEADERS = 10
+MAX_RETRIES = 15
+
 
 def getLink():
     """
@@ -19,15 +23,9 @@ def getLink():
     return redirectedLink
 
 
-def getHTML(link):
+def getHtml(link):
     """
-    Retrieves the raw HTML data. 
-
-    Parameters:
-        link (str): Link to the random Wikipedia article.
-
-    Returns:
-        str: The raw HTML data
+    Retrieves the raw HTML data from a given URL.
     """
 
     req = urllib.request.Request(link, headers={'User-Agent': 'Mozilla/5.0'})
@@ -40,13 +38,7 @@ def getHTML(link):
 
 def getTitle(htmlContent):
     """
-    Retrieves the title of the Wikipedia article.
-
-    Parameters: 
-        htmlContent (str): The raw HTML data
-
-    Returns:
-        str: The Random Wikipedia article title
+    Extracts the title of the Wikipedia article from its HTML content.
     """
 
     startIndex = htmlContent.find('<title>') + len('<title>')
@@ -56,63 +48,76 @@ def getTitle(htmlContent):
     return title.strip()
 
 
-def parseHTML(htmlContent):
+def parseHtml(htmlContent):
     """
-    Parses 3 levels of headers, excluding non-noteworthy sections.
-
-    Parameters:
-        htmlContent (str): The raw HTML data
-
-    Returns:
-        list: A list of tag and text pairs for each header.
+    Parses the HTML content to extract h2, h3, and h4 headers, excluding a predefined list of non-noteworthy sections.
     """
 
-    headers = []
-
-    disallowedHeaders = {
-        "references",
-        "external links",
-        "see also",
-        "further reading",
-        "footnotes",
-        "notes",
-        "citations",
-        "bibliography",
-        "sources"
-    }
-
-    class wikiHTMLParser(HTMLParser):
-        def handle_starttag(self, tag, attrs):
-            if tag in ['h2', 'h3', 'h4']:
-                self.currentTag = tag
-
-        def handle_endtag(self, tag):
-            if tag in ['h2', 'h3', 'h4']:
-                self.currentTag = None
-
-        def handle_data(self, data):
-            if hasattr(self, 'currentTag'):
-                fixedData = data.strip().lower()
-                if fixedData and fixedData not in disallowedHeaders:
-                    headers.append((self.currentTag, data.strip()))
-
-    parser = wikiHTMLParser()
+    parser = WikiHtmlParser()
     parser.feed(htmlContent)
 
-    return headers
+    return parser.headers
+
+
+class WikiHtmlParser(HTMLParser):
+    """
+    A custom HTML parser designed to extract header tags (h2, h3, h4) and their text content from Wikipedia articles.
+    It filters out a list of common, non-noteworthy sections.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.headers = []
+        self.currentTag = None
+        self.currentHeaderText = ""
+
+        self.disallowedHeaders = {
+            "contents",
+            "references",
+            "external links",
+            "see also",
+            "further reading",
+            "footnotes",
+            "notes",
+            "citations",
+            "bibliography",
+            "sources"
+        }
+
+    def handle_starttag(self, tag, attrs):
+        """
+        Processes the start of an HTML tag.
+        """
+
+        if tag in ['h2', 'h3', 'h4']:
+            self.currentTag = tag
+            self.currentHeaderText = ""
+
+    def handle_endtag(self, tag):
+        """
+        Processes the end of an HTML tag.
+        """
+
+        if tag in ['h2', 'h3', 'h4'] and self.currentTag == tag:
+            fixedData = self.currentHeaderText.strip().lower()
+            if fixedData and fixedData not in self.disallowedHeaders:
+                self.headers.append(
+                    (self.currentTag, self.currentHeaderText.strip()))
+            self.currentTag = None
+            self.currentHeaderText = ""
+
+    def handle_data(self, data):
+        """
+        Processes the character data within an HTML tag.
+        """
+
+        if self.currentTag:
+            self.currentHeaderText += data
 
 
 def formatMarkdown(headers, link, title):
     """
-    Formats headers, title, and link into string to be inserted into the markdown.
-
-    Parameters:
-        headers (list): A list of tag and text pairs for each header
-        link (str): The link to the random Wikipedia article
-        title (str): The title of the Wikipedia article
-
-    Returns:
-        str: A string formatted for markdown files
+    Formats the extracted headers, article link, and title into a Markdown string.
     """
 
     currentDateTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -139,14 +144,7 @@ def formatMarkdown(headers, link, title):
 
 def generateMarkdown(link, headers, title, filePath, fileName):
     """
-    Writes the markdown string into a file at a specified location.
-
-    Parameters:
-        link (str): The link to the random Wikipedia article
-        headers (list): List of headers from the Wikipedia article
-        title (str): Title of the article
-        filePath (str): The folder path where the .md file will be saved at
-        fileName (str): The name of the .md file that will be created
+    Writes the formatted Markdown content to a file at the specified path.
     """
 
     mdContent = formatMarkdown(headers, link, title)
@@ -159,13 +157,36 @@ def generateMarkdown(link, headers, title, filePath, fileName):
 
 def main():
     """
-    Main function. Calls previous functions and included file name and path for easy editability.
+    Main function to orchestrate the process of fetching a random Wikipedia article,
+    parsing its content, and generating a Markdown file.
     """
 
-    link = getLink()
-    htmlContent = getHTML(link)
-    title = getTitle(htmlContent)
-    headers = parseHTML(htmlContent)
+    foundSuitableArticle = False
+    retries = 0
+
+    link, htmlContent, title, headers = None, None, None, None
+
+    while not foundSuitableArticle and retries < MAX_RETRIES:
+        print(
+            f"Attempting to fetch article (retry {retries + 1}/{MAX_RETRIES})")
+        link = getLink()
+        htmlContent = getHtml(link)
+        title = getTitle(htmlContent)
+        headers = parseHtml(htmlContent)
+
+        if len(headers) >= MIN_HEADERS:
+            print(
+                f"Found suitable article: '{title}' with {len(headers)} headers.")
+            foundSuitableArticle = True
+        else:
+            print(
+                f"Article '{title}' has only {len(headers)} headers. Trying again")
+            retries += 1
+
+    if not foundSuitableArticle:
+        print(
+            f"ERROR: Could not find a suitable article after {MAX_RETRIES} attempts. Try again and/or edit MIN_HEADERS or MAX_RETRIES.")
+        return
 
     datePrefix = datetime.now().strftime("%Y-%m-%d")
 
